@@ -1,0 +1,40 @@
+#emotion-avatar-companion {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 80px;
+  height: 80px;
+  background: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+  z-index: 999999;
+  cursor: move;
+  transition: transform 0.3s ease, background 0.3s ease;
+  user-select: none;
+}
+
+#emotion-avatar-companion:hover {
+  transform: scale(1.1);
+}
+
+#emotion-avatar-companion.pulse {
+  animation: pulse 0.5s ease;
+}
+#emotion-avatar-companion.fade {
+  animation: fade 0.5s ease;
+}
+
+@keyframes fade {
+  0% { opacity: 0; transform: scale(0.8);}
+  50% { opacity: 1.2; transform: scale(1.15);}
+  100% { opacity: 1; transform: scale(1);}
+}
+
+@keyframes pulse {
+  0%,100% { transform: scale(1);}
+  50% { transform: scale(1.2);}
+}
