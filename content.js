@@ -5,20 +5,25 @@ avatar.dataset.defaultEmoji = '😊';
 avatar.textContent = avatar.dataset.defaultEmoji;
 document.body.appendChild(avatar);
 
+// --- Simple stemmer function ---
+function stem(word) {
+  return word.toLowerCase().replace(/(ing|ed|ly|s)$/,''); // basic suffix removal
+}
+
 // --- Emotions with weights ---
 const emotions = {
-  '😊': { keywords: ['happy','good','great','awesome','wonderful','love','excellent'], weight: 1 },
-  '😢': { keywords: ['sad','unhappy','crying','depressed','miserable', 'depressed'], weight: 1 },
-  '😡': { keywords: ['angry','mad','furious','annoyed','hate', 'frustrated', 'frustrating' , 'nerves'], weight: 1.2 },
-  '😰': { keywords: ['worried','anxious','nervous','scared','panic'], weight: 1.1 },
-  '😴': { keywords: ['tired','sleepy','exhausted','bored', 'sleep'], weight: 0.8 },
-  '😍': { keywords: ['love','adore','crush','beautiful'], weight: 1.5 },
-  '🤔': { keywords: ['think','wonder','curious','confused','maybe'], weight: 1 },
-  '😂': { keywords: ['lol','haha','funny','joke'], weight: 1.3 },
-  '😎': { keywords: ['cool','confident','winning','success'], weight: 1.2 },
-  '🤗': { keywords: ['hug','care','support','friendly'], weight: 1 },
-  '😤': { keywords: ['determined','motivated','ready','pumped'], weight: 1.4 },
-  '😌': { keywords: ['calm','peaceful','relaxed','serene','zen'], weight: 0.9 }
+  '😊': { keywords: ['happy','good','great','awesome','wonderful','love','excellent'].map(stem), weight: 1 },
+  '😢': { keywords: ['sad','unhappy','crying','depressed','miserable'].map(stem), weight: 1 },
+  '😡': { keywords: ['angry','mad','furious','annoyed','hate','frustrated','frustrating','nerves'].map(stem), weight: 1.2 },
+  '😰': { keywords: ['worried','anxious','nervous','scared','panic'].map(stem), weight: 1.1 },
+  '😴': { keywords: ['tired','sleepy','exhausted','bored','sleep'].map(stem), weight: 0.8 },
+  '😍': { keywords: ['love','adore','crush','beautiful'].map(stem), weight: 1.5 },
+  '🤔': { keywords: ['think','wonder','curious','confused','maybe'].map(stem), weight: 1 },
+  '😂': { keywords: ['lol','haha','funny','joke'].map(stem), weight: 1.3 },
+  '😎': { keywords: ['cool','confident','winning','success'].map(stem), weight: 1.2 },
+  '🤗': { keywords: ['hug','care','support','friendly'].map(stem), weight: 1 },
+  '😤': { keywords: ['determined','motivated','ready','pumped'].map(stem), weight: 1.4 },
+  '😌': { keywords: ['calm','peaceful','relaxed','serene','zen'].map(stem), weight: 0.9 }
 };
 
 // Map for fast keyword lookup
@@ -33,18 +38,18 @@ let currentEmotion = avatar.dataset.defaultEmoji;
 let typingTimer;
 let lastInputTime = Date.now();
 
-// --- Detect strongest emotion with weights ---
+// --- Detect strongest emotion with weights and stemming ---
 function detectEmotion(text) {
-  const words = text.toLowerCase().split(/\W+/);
+  const words = text.toLowerCase().split(/\W+/).map(stem); // stem all input words
   const scores = {};
-  
+
   for (const word of words) {
     if (keywordMap.has(word)) {
       const {emoji, weight} = keywordMap.get(word);
       scores[emoji] = (scores[emoji] || 0) + weight;
     }
   }
-  
+
   let bestEmoji = avatar.dataset.defaultEmoji;
   let maxScore = 0;
   for (const [emoji, score] of Object.entries(scores)) {
@@ -53,12 +58,12 @@ function detectEmotion(text) {
       bestEmoji = emoji;
     }
   }
-  
+
   // Typing speed bonus
   const speed = Date.now() - lastInputTime;
   lastInputTime = Date.now();
   if (speed < 150 && bestEmoji === '😊') bestEmoji = '😂'; // playful fast typing
-  
+
   return bestEmoji;
 }
 
@@ -67,7 +72,7 @@ function updateAvatar(emotion) {
   if (emotion !== currentEmotion) {
     currentEmotion = emotion;
     avatar.textContent = emotion;
-    
+
     // Color change based on emotion
     const colorMap = {
       '😊':'#fff9c4','😢':'#bbdefb','😡':'#ffcdd2','😰':'#ffecb3','😴':'#e0e0e0',
@@ -75,10 +80,10 @@ function updateAvatar(emotion) {
       '😤':'#ffe082','😌':'#b2dfdb'
     };
     avatar.style.background = colorMap[emotion] || '#fff';
-    
+
     avatar.classList.add('pulse','fade');
     setTimeout(()=> avatar.classList.remove('pulse','fade'),500);
-    
+
     // Tooltip with detected keywords
     const detected = Object.entries(emotions)
       .filter(([e,data]) => e === emotion)
@@ -94,7 +99,7 @@ document.addEventListener('input', e => {
     clearTimeout(typingTimer);
     const text = e.target.value || e.target.textContent || '';
     typingTimer = setTimeout(()=> updateAvatar(detectEmotion(text)), 200);
-    
+
     // Smooth follow cursor
     const rect = e.target.getBoundingClientRect();
     avatar.style.top = `${rect.top + window.scrollY - 80}px`;
