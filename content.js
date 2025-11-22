@@ -26,7 +26,7 @@ const emotions = {
   '😌': { keywords: ['calm','peaceful','relaxed','serene','zen'].map(stem), weight: 0.9 }
 };
 
-// Map for fast keyword lookup
+// --- Build keyword map ---
 const keywordMap = new Map();
 for (const [emoji, data] of Object.entries(emotions)) {
   for (const kw of data.keywords) {
@@ -34,22 +34,57 @@ for (const [emoji, data] of Object.entries(emotions)) {
   }
 }
 
+// --- Basic sentiment dictionary ---
+const sentimentDict = {
+  'happy': 1, 'joy': 1, 'love': 1, 'excited': 1, 'great': 1, 'good': 1,
+  'sad': -1, 'depressed': -1, 'cry': -1, 'angry': -1, 'hate': -1, 'frustrated': -1,
+  'tired': -0.5, 'bored': -0.5, 'calm': 0.5, 'relaxed': 0.5
+};
+
+// --- TF-IDF-like term frequency for small corpus ---
+const corpus = Object.values(emotions).flatMap(e => e.keywords);
+const idfMap = {};
+const totalDocs = Object.keys(emotions).length;
+for (const word of corpus) {
+  let count = 0;
+  for (const e of Object.values(emotions)) {
+    if (e.keywords.includes(word)) count++;
+  }
+  idfMap[word] = Math.log((totalDocs + 1) / (count + 1)) + 1; // smooth IDF
+}
+
 let currentEmotion = avatar.dataset.defaultEmoji;
 let typingTimer;
 let lastInputTime = Date.now();
 
-// --- Detect strongest emotion with weights and stemming ---
+// --- Enhanced emotion detection ---
 function detectEmotion(text) {
-  const words = text.toLowerCase().split(/\W+/).map(stem); // stem all input words
+  const words = text.toLowerCase().split(/\W+/).map(stem);
   const scores = {};
 
+  // 1️⃣ Keyword matching with TF-IDF weighting
   for (const word of words) {
     if (keywordMap.has(word)) {
       const {emoji, weight} = keywordMap.get(word);
-      scores[emoji] = (scores[emoji] || 0) + weight;
+      const tfidf = (idfMap[word] || 1); 
+      scores[emoji] = (scores[emoji] || 0) + weight * tfidf;
     }
   }
 
+  // 2️⃣ Sentiment scoring bonus
+  for (const word of words) {
+    if (sentimentDict[word]) {
+      if (sentimentDict[word] > 0) {
+        scores['😊'] = (scores['😊'] || 0) + sentimentDict[word] * 0.5;
+        scores['😍'] = (scores['😍'] || 0) + sentimentDict[word] * 0.3;
+      } else {
+        scores['😢'] = (scores['😢'] || 0) + Math.abs(sentimentDict[word]) * 0.5;
+        scores['😡'] = (scores['😡'] || 0) + Math.abs(sentimentDict[word]) * 0.3;
+      }
+    }
+  }
+
+  // 3️⃣ Determine top emoji
   let bestEmoji = avatar.dataset.defaultEmoji;
   let maxScore = 0;
   for (const [emoji, score] of Object.entries(scores)) {
@@ -59,10 +94,10 @@ function detectEmotion(text) {
     }
   }
 
-  // Typing speed bonus
+  // 4️⃣ Typing speed bonus
   const speed = Date.now() - lastInputTime;
   lastInputTime = Date.now();
-  if (speed < 150 && bestEmoji === '😊') bestEmoji = '😂'; // playful fast typing
+  if (speed < 150 && bestEmoji === '😊') bestEmoji = '😂';
 
   return bestEmoji;
 }
@@ -73,7 +108,6 @@ function updateAvatar(emotion) {
     currentEmotion = emotion;
     avatar.textContent = emotion;
 
-    // Color change based on emotion
     const colorMap = {
       '😊':'#fff9c4','😢':'#bbdefb','😡':'#ffcdd2','😰':'#ffecb3','😴':'#e0e0e0',
       '😍':'#f8bbd0','🤔':'#cfd8dc','😂':'#ffe0b2','😎':'#c8e6c9','🤗':'#d1c4e9',
@@ -84,7 +118,6 @@ function updateAvatar(emotion) {
     avatar.classList.add('pulse','fade');
     setTimeout(()=> avatar.classList.remove('pulse','fade'),500);
 
-    // Tooltip with detected keywords
     const detected = Object.entries(emotions)
       .filter(([e,data]) => e === emotion)
       .map(([e,data]) => data.keywords.join(', '))
@@ -100,7 +133,6 @@ document.addEventListener('input', e => {
     const text = e.target.value || e.target.textContent || '';
     typingTimer = setTimeout(()=> updateAvatar(detectEmotion(text)), 200);
 
-    // Smooth follow cursor
     const rect = e.target.getBoundingClientRect();
     avatar.style.top = `${rect.top + window.scrollY - 80}px`;
     avatar.style.left = `${rect.left + window.scrollX}px`;
